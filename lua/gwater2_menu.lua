@@ -60,6 +60,7 @@ local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
 if not file.Exists("gwater2", "DATA") then file.CreateDir("gwater2") end
 local presets = include("menu/gwater2_presets.lua")
+local onlinepresets = include("menu/gwater2_online_presets.lua")
 local admin_only = GetConVar("gwater2_adminonly")
 
 -- garry, sincerely... fuck you
@@ -541,6 +542,7 @@ local function create_menu(init)
 	frame.params._interactions = paramstabs.interaction_tab(tabs)
 
 	presets.presets_tab(tabs, frame.params)
+	onlinepresets(tabs, frame.params)
 	paramstabs.performance_tab(tabs)
 	menu_tab(tabs)
 	credits_tab(tabs)
@@ -584,6 +586,9 @@ local function create_menu(init)
 
 	function tabs:OnActiveTabChanged(_, new)
 		help_text:SetText(_util.get_localised(new.realname..".help"))
+		if new.realname == "op" then
+			help_text:SetText("Presets, but online!")
+		end
 		for k, v in ipairs(self.Items) do
 			if v.Tab ~= new then continue end
 			gwater2.options.menu_tab:SetInt(k)
