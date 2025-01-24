@@ -2,7 +2,7 @@ AddCSLuaFile()
 
 if SERVER or not gwater2 then return end
 
-cookie.Delete("gw2_online_presets_token")
+-- cookie.Delete("gw2_online_presets_token")
 
 local existing_pps = {}
 
