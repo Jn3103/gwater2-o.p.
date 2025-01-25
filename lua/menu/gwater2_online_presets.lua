@@ -9,6 +9,27 @@ local existing_pps = {}
 local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
 
+local function hastoken()
+    return cookie.GetString("gw2_online_presets_token", NULL) ~= NULL
+end
+
+local function gettoken()
+    return cookie.GetString("gw2_online_presets_token", NULL)
+end
+
+local fbg = Color(255, 200, 0, 50)
+local fol = Color(255, 200, 0)
+local white = Color(255, 255, 255)
+
+local function draw_main_background_colored(x, y, w, h, ol, bg)
+	surface.SetDrawColor(bg)
+	surface.DrawRect(x, y, w, h)
+
+	surface.SetDrawColor(ol)
+	surface.DrawOutlinedRect(x, y, w, h)
+end
+
+
 local function button_paint(w, h, self)
     if self:IsHovered() and not self.washovered then
         self.washovered = true
@@ -26,41 +47,81 @@ local function button_paint(w, h, self)
     styling.draw_main_background(0, 0, w, h)
 end
 
-local function preset_panel(tab, data, likes, dislikes, featured)
-    
+panelsize = 75
+
+local function preset_panel(tab, i, id, ownername, data, likes, dislikes, featured)
+    local m_panel = tab:Add("DPanel")
+    existing_pps[#existing_pps + 1] = m_panel
+    m_panel:SetTall(panelsize)
+
+    m_panel:SetWide(tab:GetWide())
+    m_panel:SetPos(tab:GetWide() / 2 - m_panel:GetWide() / 2, i * panelsize + 50)
+
+    local mcol = white
+
+    if featured == 1 then
+        mcol = fol
+        function m_panel:Paint(w, h)
+            draw_main_background_colored(0, 0, w, h, fol, fbg)
+        end
+    else
+        function m_panel:Paint(w, h)
+            styling.draw_main_background(0, 0, w, h)
+        end
+    end
+    function m_panel:AnimationThink()
+        m_panel:SetWide(tab:GetWide())
+        m_panel:SetPos(tab:GetWide() / 2 - m_panel:GetWide() / 2, i * panelsize + 50)
+    end
+
+    local presetdata = util.JSONToTable(data)
+    local pname
+    for i, v in pairs(presetdata) do
+        pname = i
+        break 
+    end
+
+    local name = m_panel:Add("DLabel") name:SetText(pname) name:SetFont("GWater2Text") name:SetContentAlignment(8) name:SizeToContents() name:SetPos(5, -2) name:SetTextColor(mcol)
+    local owname = m_panel:Add("DLabel") owname:SetText(ownername) owname:SetFont("DermaDefault") owname:SetContentAlignment(8) owname:SizeToContents() owname:SetPos(5, 16) owname:SetTextColor(mcol)
 end
 
-local function loadpresets(tab)
+
+local function deletepps()
+    for i, pp in pairs(existing_pps) do
+        pp:Remove()
+    end
+end
+
+
+local function loadpresets(tab, _search)
+    if _search == nil then _search = "" end
     HTTP({
-        method = "POST",
-        url = "http://www.jthings.xyz/gw2-onlinepresets/gmod/oauth2/verify",
+        method = "GET",
+        url = "https://www.jthings.xyz/gw2-onlinepresets/gmod/presets/get",
         parameters = {
-            sid = LocalPlayer():SteamID64(),
-            code = code
+            page = "-1",
+            search = _search
         },
         failed = function(reason)
+            _util.emit_sound("select_deny")
             ErrorNoHaltWithStack(reason)
         end,
+        headers = {
+            Authorization = gettoken()
+        },
         success = function(code, body, headers)
             if code ~= 200 then
+                _util.emit_sound("select_deny")
                 ErrorNoHaltWithStack(body)
                 return
             end
-            cookie.Set("gw2_online_presets_token", body)
-            for i, v in pairs(unloggedinpanels) do
-                v:Remove()
+            _presets = util.JSONToTable(body, false, true)
+            deletepps()
+            for i, v in pairs(_presets) do
+                preset_panel(tab, i - 1, v[1], v[2], v[3], v[4], v[5], v[6])
             end
-            generate_non_login_tab(tab)
         end
     })
-end
-
-local function hastoken()
-    return cookie.GetString("gw2_online_presets_token", NULL) ~= NULL
-end
-
-local function gettoken()
-    return cookie.GetString("gw2_online_presets_token", NULL)
 end
 
 local function generate_non_login_tab(tab)
@@ -71,30 +132,77 @@ local function generate_non_login_tab(tab)
     refresh:SetWide(65)
     refresh:SetSize(refresh:GetWide() + 5, refresh:GetTall() + 5)
     refresh:SetImage("icon16/arrow_refresh.png")
+    refresh:SetPos(tab:GetWide() - refresh:GetWide() - 15, 15)
     function refresh:AnimationThink()
         self:SetPos(tab:GetWide() - self:GetWide() - 15, 15)
     end
+
+    function refresh:DoClick()
+        _util.emit_sound("reset")
+        loadpresets(tab)
+    end
+    
     function refresh:Paint(w, h)
         button_paint(w, h, self)
     end
+    deletepps()
+    loadpresets(tab)
+
+    local _search = tab:Add("DTextEntry")
+    _search:SetFont("GWater2Text")
+    _search:SetValue("")
+
+    _search:SetSize(tab:GetWide() - refresh:GetWide() - 10, refresh:GetTall())
+    _search:SetPos(0, 15)
+
+    function _search:Paint(w, h)
+        styling.draw_main_background(0, 0, w, h)
+
+        local text = self:GetText()
+        local real = self:GetText()
+
+        local textcolor = Color(255, 255, 255)
+
+        if text ~= real then self:SetText(text) self:InvalidateLayout(true) end
+        if not self:HasFocus() then
+            textcolor.r = textcolor.r - 32
+            textcolor.g = textcolor.g - 32
+            textcolor.b = textcolor.b - 32
+        end
+        self:DrawTextEntryText(textcolor, self:GetHighlightColor(), self:GetCursorColor())
+        if text ~= real then self:SetText(real) end
+    end
+
+    function _search:AnimationThink()
+        self:SetWide(tab:GetWide() - refresh:GetWide() - 20)
+    end
+
+    function _search:OnEnter(text)
+        _util.emit_sound("select")
+        loadpresets(tab, text)
+    end
 end
+
 
 local function login(code, tab, unloggedinpanels)
     HTTP({
         method = "POST",
-        url = "http://www.jthings.xyz/gw2-onlinepresets/gmod/oauth2/verify",
+        url = "https://www.jthings.xyz/gw2-onlinepresets/gmod/oauth2/verify",
         parameters = {
             sid = LocalPlayer():SteamID64(),
             code = code
         },
         failed = function(reason)
+            _util.emit_sound("select_deny")
             ErrorNoHaltWithStack(reason)
         end,
         success = function(code, body, headers)
             if code ~= 200 then
+                _util.emit_sound("select_deny")
                 ErrorNoHaltWithStack(body)
                 return
             end
+            _util.emit_sound("select_ok")
             cookie.Set("gw2_online_presets_token", body)
             for i, v in pairs(unloggedinpanels) do
                 v:Remove()
@@ -147,15 +255,13 @@ local function tab(tabs, params)
             button_paint(w, h, copylog)
         end
         function copylog:DoClick()
-            SetClipboardText("https://discord.com/oauth2/authorize?client_id=1310620734812327936&response_type=code&redirect_uri=http%3A%2F%2Fwww.jthings.xyz%2Fgw2-onlinepresets%2Flogin&scope=identify")
+            SetClipboardText("https://discord.com/oauth2/authorize?client_id=1310620734812327936&response_type=code&redirect_uri=https%3A%2F%2Fwww.jthings.xyz%2Fgw2-onlinepresets%2Flogin&scope=identify")
             copylog:SetText("Copied!")
+            _util.emit_sound("confirm")
             timer.Simple(0.5, function()
                 copylog:SetText("Copy Login Link")
             end)
         end
-
-        
-
 
         local codeentry = tab:Add("DTextEntry")
         codeentry:SetFont("GWater2Text")
