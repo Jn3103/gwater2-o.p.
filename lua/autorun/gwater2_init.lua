@@ -1,14 +1,11 @@
+---@diagnostic disable: inject-field, undefined-field
 AddCSLuaFile()
 
--- do return end
+include("gwater2_flags.lua")
 
 gwater2 = nil
 
 local toload = (BRANCH == "x86-64" or BRANCH == "chromium") and "gwater2" or "gwater2_main" -- carrying
-
-local load_stub = not util.IsBinaryModuleInstalled(toload) and (system.IsLinux() or system.IsOSX())
--- whether to load stub instead of actual module
--- useful for testing lua side of gw2 on native linux gmod
 
 if SERVER then 
 	include("gwater2_net.lua")
@@ -32,12 +29,12 @@ local lang = GetConVar("gmod_language"):GetString()
 local function load_language(lang)
 	local strings = file.Read("data_static/gwater2/locale/gwater2_".. lang .. ".txt", "THIRDPARTY")
 	if not strings then return false end
-	/* 
+	--[[
 	matches strings like this:
 		"KEY"=[[
 		VALUE
 		]]
-	*/
+	--]]
 	for k, v in string.gmatch(strings, '"(.-)"=%[%[%s*(.-)%s*%]%]') do 
 		language.Add(k, v) 
 	end
@@ -50,6 +47,17 @@ if not load_language(lang) then
 end
 
 local function gw2_error(text)
+	local frame
+	if GWATER_ERROR_POPUP then
+		_, frame = pcall(function() return vgui.Create("DFrame") end)
+		if not frame then
+			timer.Simple(0, function()
+				gw2_error(text)
+			end)
+			return
+		end
+	end
+	
 	ErrorNoHalt(text) -- log to problem menu
 	chat.AddText(
 		Color(0, 0, 0), "[", 
@@ -59,9 +67,68 @@ local function gw2_error(text)
 		Color(0, 0, 0), "]: ", 
 		Color(250, 230, 20), language.GetPhrase("gwater2.error.chatlog")
 	)
+
+	if not GWATER_ERROR_POPUP then return end
+
+	surface.PlaySound("gwater2/menu/packs/default/toggle.wav")
+	frame:SetTitle("GWater 2 Error")
+	frame:SetDraggable(false)
+	frame:ShowCloseButton(false)
+	frame:SetBackgroundBlur(true)
+	frame:SetSize(600, 200)
+	local label = frame:Add("DLabel")
+	label:SetText(text)
+	label:SetContentAlignment(8)
+	label:SetWrap(true)
+	label:SetFont("Trebuchet16")
+	label:SetTextColor(color_white)
+	local button = frame:Add("DButton")
+	button:SetText("OK")
+	function button:DoClick()
+		surface.PlaySound("gwater2/menu/packs/default/select_deny.wav")
+		frame:Close()
+	end
+	label:Dock(TOP)
+	label:SetTall((#(label:GetText():Split("\n")))*16+8)
+	button:Dock(TOP)
+	frame:MakePopup()
+	frame:SetTall(36 + label:GetTall() + button:GetTall())
+	frame:Center()
+	frame.label = label
+	frame.button = button
+	function frame:Paint(w, h)
+		if self:GetBackgroundBlur() then
+			Derma_DrawBackgroundBlur(self, self.m_fCreateTime)
+		end
+		surface.SetDrawColor(0, 0, 0, 190)
+		surface.DrawRect(0, 0, w, h)
+		surface.SetDrawColor(255, 255, 255)
+		surface.DrawOutlinedRect(0, 0, w, h)
+		surface.SetDrawColor(0, 0, 0, 190)
+		surface.DrawRect(0, 0, w, 24)
+		surface.SetDrawColor(255, 255, 255)
+		surface.DrawOutlinedRect(0, 0, w, 24)
+	end
+	local washovered = false
+	button:SetTextColor(Color(255, 255, 255))
+	function button:Paint(w, h)
+		if self:IsHovered() ~= washovered then
+			washovered = self:IsHovered()
+			if not self:IsHovered() then
+				self:SetTextColor(Color(255, 255, 255))
+			else
+				surface.PlaySound("gwater2/menu/packs/default/rollover.wav")
+				self:SetTextColor(Color(0,  127, 255))
+			end
+		end
+		surface.SetDrawColor(0, 0, 0, 190)
+		surface.DrawRect(0, 0, w, h)
+		surface.SetDrawColor(255, 255, 255)
+		surface.DrawOutlinedRect(0, 0, w, h)
+	end
 end
 
-if not load_stub then
+if not GWATER2_USE_STUB then
 	if !util.IsBinaryModuleInstalled(toload) then
 		gw2_error(string.format(
 			"===========================================================\n\n" ..
@@ -100,7 +167,7 @@ local function unfucked_get_mesh(ent, raw)
 
 	local model = ent:GetModel()
 	local is_ragdoll = util.IsValidRagdoll(model)
-	local convexes
+	local convexes = nil
 
 	if !is_ragdoll or raw then
 		local cs_ent = ents.CreateClientProp(model)
@@ -114,7 +181,7 @@ local function unfucked_get_mesh(ent, raw)
 		-- I have no idea why this happens.
 		if model == "models/police.mdl" then model = "models/combine_soldier.mdl" end
 
-		local cs_ent = ClientsideRagdoll(model)
+		local cs_ent = ClientsideRagdoll(model, 13)	
 		convexes = {}
 		for i = 0, cs_ent:GetPhysicsObjectCount() - 1 do
 			table.insert(convexes, cs_ent:GetPhysicsObjectNum(i):GetMesh())
@@ -139,7 +206,7 @@ local function add_prop(ent)
 
 	ent.GWATER2_IS_RAGDOLL = util.IsValidRagdoll(ent:GetModel())
 	
-	if #convexes < 16 then	-- too many convexes to be worth calculating
+	if ent.GWATER2_IS_RAGDOLL or #convexes <= 16 then	-- too many convexes to be worth calculating
 		for k, v in ipairs(convexes) do
 			if #v <= 64 * 3 then	-- hardcoded limits.. No more than 64 planes per convex as it is a FleX limitation
 				gwater2.solver:AddConvexCollider(ent_index, v, ent:GetPos(), ent:GetAngles())
@@ -148,7 +215,12 @@ local function add_prop(ent)
 			end
 		end
 	else
-		gwater2.solver:AddConcaveCollider(ent_index, unfucked_get_mesh(ent, true), ent:GetPos(), ent:GetAngles())
+		local combined = {}
+		for k, v in ipairs(convexes) do
+			table.Add(combined, v)
+		end
+
+		gwater2.solver:AddConcaveCollider(ent_index, combined, ent:GetPos(), ent:GetAngles())
 	end
 end
 
@@ -172,7 +244,7 @@ local no_lerp = false
 
 -- should this entity collide with water?
 local function should_collide(ent)	
-	return ent:GetCollisionGroup() != COLLISION_GROUP_WORLD and bit.band(ent:GetSolidFlags(), FSOLID_NOT_SOLID) == 0
+	return ent:GetCollisionGroup() ~= COLLISION_GROUP_WORLD and bit.band(ent:GetSolidFlags(), FSOLID_NOT_SOLID) == 0
 end
 
 gwater2 = {
@@ -191,11 +263,12 @@ gwater2 = {
 			if !ent.GWATER2_IS_RAGDOLL then
 
 				-- custom physics objects may be networked and initialized after the entity was created
-				if ent.GWATER2_PHYSOBJ or ent:GetPhysicsObjectCount() != 0 then
+				if ent.GWATER2_PHYSOBJ or ent:GetPhysicsObjectCount() ~= 0 then
 					local phys = ent:GetPhysicsObject()	-- slightly expensive operation
 
-					if !IsValid(ent.GWATER2_PHYSOBJ) or ent.GWATER2_PHYSOBJ != phys then	-- we know physics object was recreated with a PhysicsInit* function
+					if !IsValid(ent.GWATER2_PHYSOBJ) or ent.GWATER2_PHYSOBJ ~= phys then	-- we know physics object was recreated with a PhysicsInit* function
 						add_prop(ent)	-- internally cleans up entity colliders
+						
 						ent.GWATER2_PHYSOBJ = phys
 					end
 				end
@@ -275,6 +348,8 @@ hook.Add("HUDPaint", "gwater2_status", function()
 		frac = 1-math.ease.InCirc(math.min(1, CurTime()-hide_time))
 	else
 		show_time = show_time or CurTime()
+		-- luals wtf
+		---@diagnostic disable-next-line: cast-local-type
 		hide_time = nil
 		frac = math.ease.OutCirc(math.min(1, CurTime()-show_time))
 	end
@@ -386,6 +461,7 @@ timer.Create("gwater2_calcdiffusesound", 0.1, 0, function()
 	end
 end)
 
+local world_initialized = false	-- because apparently people think you can return values in InitPostEntity
 local function gwater_tick2()
 	local lp = LocalPlayer()
 	if !IsValid(lp) then return end
@@ -395,6 +471,17 @@ local function gwater_tick2()
 	if gwater2.solver:GetActiveParticles() <= 0 then 
 		no_lerp = true
 	else
+		if !world_initialized then 
+			world_initialized = true
+			gwater2.reset_solver()
+
+			hook.Add("OnEntityCreated", "gwater2_addprop", function(ent) 
+				timer.Simple(0, function() -- timer.0 so data values are setup correctly
+					add_prop(ent) 
+				end) 
+			end)	
+		end
+
 		gwater2.solver:ApplyContacts(limit_fps * gwater2.parameters.force_multiplier, 3, gwater2.parameters.force_buoyancy, gwater2.parameters.force_dampening)
 		gwater2.solver:IterateColliders(gwater2.update_colliders)
 
@@ -420,6 +507,4 @@ local function gwater_tick2()
 end
 
 timer.Create("gwater2_tick", 1 / gwater2.options.simulation_fps:GetInt(), 0, gwater_tick2)
-hook.Add("InitPostEntity", "!gwater2_addprop", gwater2.reset_solver)
-hook.Add("OnEntityCreated", "!gwater2_addprop", function(ent) timer.Simple(0, function() add_prop(ent) end) end)	// timer.0 so data values are setup correctly
-hook.Add("PreCleanupMap","!gwater2_cleanup",function() gwater2.ResetSolver() end)
+hook.Add("PreCleanupMap","gwater2_cleanup",function() gwater2.ResetSolver() end)

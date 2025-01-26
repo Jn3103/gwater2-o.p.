@@ -1,3 +1,4 @@
+---@diagnostic disable: inject-field, undefined-field
 AddCSLuaFile()
 
 if SERVER or not gwater2 then return end
@@ -217,6 +218,7 @@ local function create_menu(init)
 			})
 		end
 
+		if not particle_material then return end
 		surface.SetMaterial(particle_material)
 
 		local pixelate = gwater2.options.read_config().pixelate_preview 
@@ -280,6 +282,7 @@ local function create_menu(init)
 
 	if not gwater2.options.read_config().preview then
 		sim_preview:SetVisible(false)
+		---@diagnostic disable-next-line: param-type-mismatch
 		divider:SetLeft(nil)
 		divider:SetLeftWidth(0)
 		divider:SetLeftMin(0)
@@ -294,6 +297,7 @@ local function create_menu(init)
 	end
 	--tabs:Dock(FILL)
 	tabs:SetFadeTime(0)
+	---@diagnostic disable-next-line: cast-local-type
 	help_text = help_text:Add("DLabel")
 	help_text:Dock(FILL)
 	help_text:DockMargin(5, 5, 5, 5)
@@ -376,12 +380,12 @@ local function create_menu(init)
 		local patrons_table = {"<Failed to load patron data!>"}
 		
 		file.AsyncRead("data_static/gwater2/patrons.txt", "THIRDPARTY", function(name, path, status, data)
-			if status != FSASYNC_OK then return end
+			if status ~= FSASYNC_OK then return end
 			patrons_table = string.Split(data, "\n")
 		end)
 
 		-- Hi - Xenthio
-		-- DONT FORGET TO ADD 'Xenthio' & 'NecrosVideos'
+		-- Hello - googer_
 
 		local supporter_color = Color(171, 255, 163)
 		
@@ -390,6 +394,7 @@ local function create_menu(init)
 			local _, height = self:GetContentSize()
 			label:SetTall(math.max(#patrons_table * 20, 1000) + 440)	-- fuck this shit hack
 
+			---@diagnostic disable-next-line: undefined-field
 			local top = math.max(math.floor((tab:GetVBar():GetScroll() - 440) / 20), 1)	-- only draw what we see
 			for i = top, math.min(top + 30, #patrons_table) do
 				draw.DrawText(patrons_table[i], "GWater2Text", 6, height + i * 20, supporter_color, TEXT_ALIGN_LEFT)
@@ -448,6 +453,7 @@ local function create_menu(init)
 	        	gwater2.options.write_config({["preview"]=val})
 	        	sim_preview:SetVisible(val)
 	        	if not val then
+					---@diagnostic disable-next-line: param-type-mismatch
 	        		divider:SetLeft(nil)
 	        		divider:SetLeftWidth(0)
 					divider:SetLeftMin(0)
@@ -565,14 +571,44 @@ local function create_menu(init)
 				if not gwater2.options.read_config().animations then return end
 				local children = {}
 				local function _(p)
+					children[#children+1] = p
+					if #p:GetChildren() <= 0 then
+						return
+					end
 					for __,child in pairs(p:GetChildren()) do
-						children[#children+1] = child
 						_(child)
 					end
 				end
 				_(rt.Panel:GetChildren()[1])
-				for i,v in pairs(children) do
-					v:SetAlpha((1-delta-i/500)*255*4)
+				for n, child in ipairs(children) do
+					if not child.set then 
+						child.OldPaint = child.OldPaint or child.Paint
+						child.set = true
+					end
+					function child:Paint(w, h)
+						if not self.OldPaint then return end
+						local x, y = self:LocalToScreen(0, 0)
+
+						render.ClearStencil()
+						render.SetStencilTestMask(255)
+						render.SetStencilWriteMask(255)
+						---@diagnostic disable: param-type-mismatch
+						render.SetStencilPassOperation(STENCILOPERATION_KEEP)
+						render.SetStencilZFailOperation(STENCILOPERATION_KEEP)
+						render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_NEVER)
+						render.SetStencilReferenceValue(1)
+						render.SetStencilFailOperation(STENCILOPERATION_REPLACE)
+						render.SetStencilEnable(true)
+						draw.RoundedBox(0, 0, 0, w, h*(1-delta)*5, color_white)
+
+    					render.SetStencilFailOperation(STENCILOPERATION_KEEP)
+						render.SetStencilCompareFunction(STENCILCOMPARISONFUNCTION_EQUAL)
+						--render.SetScissorRect(x, y, x+w, y+(h*(1-delta)), true)
+							self.OldPaint(self, w, h)
+						--render.SetScissorRect(0, 0, 0, 0, false)
+
+						render.SetStencilEnable(false)
+					end
 				end
 			end
 			surface.SetDrawColor(255, 255, 255, 255)
@@ -603,7 +639,7 @@ local function create_menu(init)
 
 	local cfg, sounds
 	if init then
-		cfg = gwater2.options.read_config()
+		cfg = gwater2.options.read_config() or {}
 		sounds = cfg.sounds
 		cfg.sounds = false
 	end
@@ -633,6 +669,7 @@ local function create_menu(init)
 	return frame
 end
 
+-- TODO: find another font / fix that one
 surface.CreateFont("GWater2TextSmall", {
 	font = (system.IsWindows() and "Titillium Web[RUS By Daymarius]" or "TitilliumWebRegular.ttf"), 
     extended = true,
@@ -724,7 +761,7 @@ concommand.Add("gwater2_menu", function()
 		items[3].Tab:SetVisible(tabs_enabled) -- visuals
 		items[4].Tab:SetVisible(tabs_enabled) -- interactions
 		items[5].Tab:SetVisible(tabs_enabled) -- presets
-		items[9].Tab:SetVisible(tabs_enabled and GetConVar("developer"):GetInt() != 0) -- developer
+		items[9].Tab:SetVisible(tabs_enabled and GetConVar("developer"):GetInt() ~= 0) -- developer
 
 		return
 	end
@@ -761,16 +798,16 @@ end)
 
 -- shit breaks in singleplayer due to predicted hooks
 function gwater2.open_menu(ply, key)
-	if !game.SinglePlayer() and !IsFirstTimePredicted() then return end
+	if !game.SinglePlayer() and not IsFirstTimePredicted() then return end
 
-	if key != gwater2.options.menu_key:GetInt() or just_closed == true then return end
+	if key ~= gwater2.options.menu_key:GetInt() or just_closed == true then return end
 	RunConsoleCommand("gwater2_menu")
 end
 
 function gwater2.close_menu(ply, key)
-	if !game.SinglePlayer() and !IsFirstTimePredicted() then return end
+	if !game.SinglePlayer() and not IsFirstTimePredicted() then return end
 
-	if key != gwater2.options.menu_key:GetInt() then return end
+	if key ~= gwater2.options.menu_key:GetInt() then return end
 	just_closed = false
 end
 

@@ -29,5 +29,12 @@ googer_        | Russian
 pigeondriver45 | Turkish
 Cast_E         | Brazilian Portuguese
 SCRENG R       | Spanish
+DarkSM         | Hungarian
+ErickMaksimets | Ukrainian
+Hexak12        | Polish
+TheOnly8Z      | Simplified Chinese
+GoranRayman    | French
+Limule         | French
 ```
+
 Please consider checking out [Gelly](https://github.com/gelly-gmod/gelly), another GMod fluid addon made in parallel alongside **GWater2**
