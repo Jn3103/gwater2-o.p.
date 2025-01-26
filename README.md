@@ -1,4 +1,4 @@
-# GWater2 [![made with - mee++](https://img.shields.io/badge/made_with-mee++_and_jn-----2ea44f)](http://gw2-online.com/)
+# GWater2 [![made with - mee++](https://img.shields.io/badge/made_with-mee++_and_jn-----2ea44f)](https://www.jthings.xyz/gw2-onlinepresets/)
 
 This Fork is for Online Presets, something that ive been considering for a bit. Basic concept being that you can upload presets for everyone to see.
 
