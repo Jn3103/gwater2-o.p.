@@ -1,3 +1,15 @@
+# GWater 2 Addon API
+
+GWater 2 provides addon creators with the ability create **addons** that provide such addon creators the ability to add tabs to the menu, directly modify existing parameters and allow for more things than where before done.
+
+A **Addon Template** is provided  in this same docs folder with all simple things to get started \
+*`TODO: actually provide it`*
+
+## ![cl] Addon Definition
+
+`: FlexSolver` \
+&nbsp;&nbsp;   FlexSolver used for world water. \
+
 # GWater 2 Public API
 
 ![cl] `gwater2.solver: FlexSolver` \

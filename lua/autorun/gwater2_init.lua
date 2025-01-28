@@ -21,6 +21,7 @@ if SERVER then
 	AddCSLuaFile("gwater2_net.lua")
 	AddCSLuaFile("gwater2_shaders.lua")
 	AddCSLuaFile("gwater2_menu.lua")
+	AddCSLuaFile("gwater2_addons.lua")
 	return
 end
 

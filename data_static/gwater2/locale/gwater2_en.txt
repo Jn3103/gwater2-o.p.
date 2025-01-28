@@ -1212,3 +1212,11 @@ Shoot Mode
 Please note that same parameters with different
 modes behave differently.
 ]]
+
+------------------------
+-------- ADDONS --------
+------------------------
+
+"gwater2.addons.NoDescription"=[[
+No description provided.
+]]
