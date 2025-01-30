@@ -5,13 +5,21 @@ if SERVER or not gwater2 then return end
 gwater2.cursor_busy = nil
 
 local localed_cache = {}
--- TODO: this is horrible.
-local function get_localised(loc, a,b,c,d,e)
-	a,b,c,d,e = a or "", b or "", c or "", d or "", e or ""
-	if localed_cache[loc..a..b..c..d..e] then return localed_cache[loc..a..b..c..d..e] end
-	localed_cache[loc..a..b..c..d..e] = language.GetPhrase("gwater2.menu."..loc):gsub("^%s+", ""):format(a,b,c,d,e)
-	return localed_cache[loc..a..b..c..d..e]
+
+local function get_localised(loc, ...)
+	local concat = loc .. table.concat({...}, "")
+	if localed_cache[concat] then return localed_cache[concat] end
+	localed_cache[concat] = language.GetPhrase("gwater2.menu."..loc):gsub("^%s+", ""):format(...)
+	return localed_cache[concat]
 end
+
+-- DONE: this was horrible.
+--local function get_localised(loc, a,b,c,d,e)
+--	a,b,c,d,e = a or "", b or "", c or "", d or "", e or ""
+--	if localed_cache[loc..a..b..c..d..e] then return localed_cache[loc..a..b..c..d..e] end
+--	localed_cache[loc..a..b..c..d..e] = language.GetPhrase("gwater2.menu."..loc):gsub("^%s+", ""):format(a,b,c,d,e)
+--	return localed_cache[loc..a..b..c..d..e]
+--end
 
 local function is_hovered_any(panel)
 	if panel:IsHovered() then return true end

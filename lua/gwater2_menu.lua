@@ -58,9 +58,9 @@ end
 local addons = include("gwater2_addons.lua")
 gwater2.addons = addons.public
 
-hook.Call("gwater2_addon")
+hook.Run("gw2_INTERNAL_call")
 
-local params = include("menu/gwater2_params.lua")
+local params = include("menu/gwater2_params.lua")(addons)
 local paramstabs = include("menu/gwater2_paramstabs.lua")
 local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
@@ -540,28 +540,35 @@ local function create_menu(init)
     	})
 	end
 
+	local function addon_tab(tabs) -- sorry, has to be placed in here to prevent leaking addons.private
+
+	end
+
 	tabs.help_text = help_text
 
 	help_text:SetText(_util.get_localised("About Tab.help"))
+	local function generate_tabs(tabs, frame)
+		addons.private.GenerateTabs(0, tabs)
+		about_tab(tabs)
+		addons.private.GenerateTabs(1, tabs)
 	
-	addons.private.GenerateTabs(0, tabs)
-	about_tab(tabs)
-	addons.private.GenerateTabs(1, tabs)
+		frame.params = {}	-- need to pass by reference into presets
+		frame.params._parameters = paramstabs.parameters_tab(tabs)
+		frame.params._visuals = paramstabs.visuals_tab(tabs)
+		frame.params._interactions = paramstabs.interaction_tab(tabs)
+	
+		presets.presets_tab(tabs, frame.params)
+		addons.private.GenerateTabs(2, tabs)
+		paramstabs.performance_tab(tabs)
+		addons.private.GenerateTabs(3, tabs)
+		menu_tab(tabs)
+		addons.private.GenerateTabs(4, tabs)
+		credits_tab(tabs)
+		addons.private.GenerateTabs(5, tabs)
+		paramstabs.developer_tab(tabs)
+	end
 
-	frame.params = {}	-- need to pass by reference into presets
-	frame.params._parameters = paramstabs.parameters_tab(tabs)
-	frame.params._visuals = paramstabs.visuals_tab(tabs)
-	frame.params._interactions = paramstabs.interaction_tab(tabs)
-
-	presets.presets_tab(tabs, frame.params)
-	addons.private.GenerateTabs(2, tabs)
-	paramstabs.performance_tab(tabs)
-	addons.private.GenerateTabs(3, tabs)
-	menu_tab(tabs)
-	addons.private.GenerateTabs(4, tabs)
-	credits_tab(tabs)
-	addons.private.GenerateTabs(5, tabs)
-	paramstabs.developer_tab(tabs)
+	generate_tabs(tabs, frame)
 
 	for _,tab in pairs(tabs:GetItems()) do
 		local rt = tab

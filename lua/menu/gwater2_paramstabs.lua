@@ -1,4 +1,4 @@
-local params = include("menu/gwater2_params.lua")
+local params = include("menu/gwater2_params.lua")()
 local styling = include("menu/gwater2_styling.lua")
 local util = include("menu/gwater2_util.lua")
 
@@ -52,15 +52,17 @@ local function init_tab(tabs, tab_name, image, recursive)
 	end
 
 	-- TODO: genuinely horrific code
+	-- TODO: get verification from goog on this
 	local added_params = {}
 	if recursive then 
 		for sname, sec in SortedPairs(params[tab_name]) do
 			init_tab_params(tabs, tab, tab_name, sname, sec, added_params, true)
 		end
-	else
-		init_tab_params(tabs, tab, tab_name, nil, params[tab_name], added_params, false)
+		return added_params, tab
 	end
-	
+
+	init_tab_params(tabs, tab, tab_name, nil, params[tab_name], added_params, false)
+
 	return added_params, tab
 end
 

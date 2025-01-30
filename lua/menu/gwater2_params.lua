@@ -3,11 +3,11 @@ AddCSLuaFile()
 
 if SERVER or not gwater2 then return end
 
-if gwater2.__PARAMS__ then return gwater2.__PARAMS__ end
-
 local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
 
+function pass(addons)
+if gwater2.__PARAMS__ then return gwater2.__PARAMS__ end
 local parameters = {
 	["001-Physics Parameters"] = {
 		["001-Adhesion"] = {
@@ -707,5 +707,10 @@ local developer = {
 	},
 }
 
-gwater2.__PARAMS__ = {Parameters=parameters, Visuals=visuals, Performance=performance, Interactions=interaction, Developer=developer}
+local params = {Parameters=parameters, Visuals=visuals, Performance=performance, Interactions=interaction, Developer=developer}
+addons.private.CallOnAddons("InitParams", params)
+gwater2.__PARAMS__ = params
 return gwater2.__PARAMS__
+end
+
+return pass
