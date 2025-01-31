@@ -1217,6 +1217,47 @@ modes behave differently.
 -------- ADDONS --------
 ------------------------
 
-"gwater2.addons.NoDescription"=[[
+"gwater2.addons.id"=[[
+[GWATER2 ADDONS]
+]]
+
+
+"gwater2.menu.addons"=[[
+Addons
+]]
+
+"gwater2.menu.addons.NoDescription"=[[
 No description provided.
+]]
+
+"gwater2.menu.addons.help"=[[
+Manage, demount and mount your addons
+]]
+
+split for coloring reasons
+
+"gwater2.addons.error.part1"=[[
+ERROR:
+]]
+
+"gwater2.addons.error.part2"=[[
+Addon "%s" %s!
+]]
+
+"gwater2.addons.log"=[[
+%s: %s
+]]
+
+
+
+"gwater2.addons.errors.invalidprefix"=[[
+prefix contains "/"
+]]
+
+"gwater2.addons.logs.mounted"=[[
+Addon Mounted!
+]]
+
+"gwater2.addons.logs.dismounted"=[[
+Addon Demounted!
 ]]

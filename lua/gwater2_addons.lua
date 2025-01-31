@@ -25,13 +25,13 @@ do -- basic tables, functions and more tables
         pan.help_text = tab.help_text
         function pan:Paint(w, h) styling.draw_main_background(0, 0, w, h) end
         pan.label = _util.make_title_label(pan, txt)
-        function pan:Finish()
+        function pan:Finish(indent)
             local ttall = self:GetTall()+5
             for _, i in pairs(self:GetChildren()) do
                 ttall = ttall + i:GetTall()
             end
         
-            ttall = ttall - 20
+            ttall = ttall - (20 - ((indent or 0) * 20))
             self:SetTall(ttall)
             self:Dock(TOP)
             self:InvalidateChildren()
@@ -47,7 +47,8 @@ do -- basic tables, functions and more tables
 end
 
 local ccall
-do -- locale and ccall (checked call, checks if func exists before calling it)
+local ccalla
+do -- locale, ccall (checked call, checks if func exists before calling it) and ccalla (addon version)
     -- reused code
     local lang = GetConVar("gmod_language"):GetString()
     local function load_language(lang, locale_prefix, ftype)
@@ -74,6 +75,15 @@ do -- locale and ccall (checked call, checks if func exists before calling it)
     ccall = function(func, ...) -- run a function if it exists, made to replace p
         if !func then return end
         func(...)
+    end
+
+    ccalla = function(func, addon, ...)
+        if !func then return end
+        local succ, err = pcall(func, ...)
+        if !succ then
+            addon:Error(err)
+            return
+        end
     end
 end
 
@@ -136,7 +146,7 @@ do -- parameter creations, copied and modified to work better in a addon context
         end
     end
 
-    create_slider = function(sliderp, tab)
+    create_slider = function(sliderp, tab, addon)
         local panel = tab:Add("DPanel")
         panel.tab = tab
         panel.parameter_locale_name = sliderp.name
@@ -171,7 +181,7 @@ do -- parameter creations, copied and modified to work better in a addon context
         function slider:OnValueChanged(val)
             if self.block then return end
             sliderp.value = math.Round(val, sliderp.decimals)
-            ccall(sliderp.OnChange, sliderp, panel)
+            ccalla(sliderp.OnChange, addon, sliderp, panel)
         end
     
         local button = panel:Add("DImageButton")
@@ -193,7 +203,7 @@ do -- parameter creations, copied and modified to work better in a addon context
     
         function button:DoClick()
             reset(sliderp, slider)
-            ccall(sliderp.OnReset, sliderp, panel)
+            ccalla(sliderp.OnReset, addon, sliderp, panel)
         end
         panel.Paint = panel_paint
     
@@ -211,13 +221,13 @@ do -- parameter creations, copied and modified to work better in a addon context
     
         panel:SetTall(panel:GetTall()+2)
         function panel:Think()
-            ccall(sliderp.OnThink, sliderp, panel)
+            ccalla(sliderp.OnThink, addon, sliderp, panel)
         end
-        ccall(sliderp.Init, sliderp, panel)
+        ccalla(sliderp.Init, addon, sliderp, panel)
         return panel
     end
 
-    create_check = function(checkp, tab)
+    create_check = function(checkp, tab, addon)
         local panel = tab:Add("DPanel")
         panel.tab = tab
         panel.parameter_locale_name = checkp.name
@@ -250,13 +260,13 @@ do -- parameter creations, copied and modified to work better in a addon context
             check:SetChecked(checkp.default)
             checkp.value = checkp.default
             emit_overrides("reset", checkp)
-            ccall(checkp.OnReset, checkp, panel)
+            ccalla(checkp.OnReset, addon, checkp, panel)
         end
         function check:OnChange(val)
             if self.block then return end
             checkp.value = val
             emit_overrides("toggle", checkp)
-            ccall(checkp.OnChange, checkp, panel)
+            ccall(checkp.OnChange, addon, checkp, panel)
         end
         panel.Paint = panel_paint
         function check.Button:Paint(w, h)
@@ -279,7 +289,7 @@ do -- parameter creations, copied and modified to work better in a addon context
         panel:SetTall(panel:GetTall()+5)
 
         function panel:Think()
-            ccall(checkp.OnThink, checkp, self)
+            ccalla(checkp.OnThink, addon, checkp, self)
         end
 
         return panel
@@ -316,7 +326,7 @@ do -- parameter creations, copied and modified to work better in a addon context
     public.util.ToHex = COLOR_ToHex
     public.util.FromHex = COLOR_FromHex
 
-    create_color = function(colorp, tab)
+    create_color = function(colorp, tab, addon)
         local panel = tab:Add("DPanel")
         panel.tab = tab
         panel.parameter_locale_name = colorp.name
@@ -407,7 +417,7 @@ do -- parameter creations, copied and modified to work better in a addon context
         function button:DoClick()
             emit_overrides("reset", colorp)
             colorp:Set(colorp.default)
-            ccall(colorp.OnReset, colorp, panel)
+            ccalla(colorp.OnReset, addon, colorp, panel)
         end
     
         panel:SizeToContents()
@@ -419,16 +429,16 @@ do -- parameter creations, copied and modified to work better in a addon context
 
             self.Hex:SetValue("##"..COLOR_ToHex(val))
             colorp.value = val
-            ccall(colorp.OnChange, colorp, panel)
+            ccalla(colorp.OnChange, addon, colorp, panel)
         end
         panel.Paint = panel_paint
     
         panel:SetTall(panel:GetTall()+5)
     
-        ccall(colorp.Init, colorp, panel)
+        ccalla(colorp.Init, addon, colorp, panel)
 
         function panel:Think()
-            ccall(colorp.OnThink, colorp, self)
+            ccalla(colorp.OnThink, addon, colorp, self)
         end
 
         return panel
@@ -488,8 +498,8 @@ do -- parameter structs
         param.max = max
         param.decimals = decimals
 
-        function param:Generate(tab)
-            self.panel = create_slider(self, tab)
+        function param:Generate(tab, addon)
+            self.panel = create_slider(self, tab, addon)
             return self.panel
         end
 
@@ -509,8 +519,8 @@ do -- parameter structs
     function public.parameters.color(name, default, value)
         local param = baseParameter(name, default, value)
 
-        function param:Generate(tab)
-            self.panel = create_color(self, tab)
+        function param:Generate(tab, addon)
+            self.panel = create_color(self, tab, addon)
             return self.panel
         end
 
@@ -534,8 +544,8 @@ do -- parameter structs
         sounds.mute.toggle = false 
         sounds.overrides.toggle = nil
 
-        function param:Generate(tab)
-            self.panel = create_check(self, tab)
+        function param:Generate(tab, addon)
+            self.panel = create_check(self, tab, addon)
             return self.panel
         end
 
@@ -553,13 +563,20 @@ do -- parameter structs
     end
 end
 
-function public.definition(icon, name, description)
+function public.definition(icon, name, description, prefix)
+    local name = _util.get_localised(name)
+    -- TODO: awful, i think
+    if #string.Split(prefix, "/") ~= 1 then
+        chat.AddText(language.GetPhrase("gwater2.addons.id") .. " ", Color(255, 0, 0), language.GetPhrase("gwater2.addons.error.part1") .. " ", Color(34, 162, 221), string.format(language.GetPhrase("gwater2.addons.error.part2"), name, language.GetPhrase("gwater2.addons.errors.invalidprefix")))
+        return
+    end
     local def = {}
     def.info = {
         icon = icon,
         name = name,
         description = description
     }
+    def.prefix = prefix
     def.mounted = false
     def.parameters = {}
     def.id = nil
@@ -571,6 +588,14 @@ function public.definition(icon, name, description)
 
     function def:AddParameter(param)
         self.parameters[#self.parameters + 1] = param
+    end
+
+    function def:Error(err)
+        chat.AddText(language.GetPhrase("gwater2.addons.id") .. " ", Color(255, 0, 0), language.GetPhrase("gwater2.addons.error.part1") .. " ", Color(34, 162, 221), string.format(language.GetPhrase("gwater2.addons.error.part2"), self.info.name, tostring(err)))
+    end
+
+    function def:Log(log)
+        chat.AddText(language.GetPhrase("gwater2.addons.id") .. " ", Color(0, 255, 115), string.format(language.GetPhrase("gwater2.addons.log"), self.info.name, tostring(log)) .. " ", Color(34, 162, 221))
     end
 
     function def:CreateTab(order, icon, name, func)
@@ -588,7 +613,7 @@ function public.definition(icon, name, description)
         self.mounted = true
         self.id = #private.addons + 1
         private.addons[self.id] = self
-        print(string.format("[GWATER2] Addon %s mounted successfully!", self.info.name))
+        self:Log(language.GetPhrase("gwater2.addons.logs.mounted"))
     end
 
     function def:IsMounted()
@@ -600,7 +625,7 @@ function public.definition(icon, name, description)
         self.mounted = false
         table.remove(private.addons, self.id)
         self.id = nil
-        print(string.format("[GWATER2] Addon %s dismounted successfully!", self.info.name))
+        self:Log(language.GetPhrase("gwater2.addons.logs.dismounted"))
     end
     return def
 end
@@ -624,7 +649,7 @@ do -- private functions only shared with menu
 
     function private.CallOnAddons(funcname, ...)
         for i, v in pairs(private.addons) do
-            ccall(v[funcname], v, ...)
+            ccalla(v[funcname], v, v, ...)
         end
     end
 end

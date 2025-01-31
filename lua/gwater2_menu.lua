@@ -58,8 +58,6 @@ end
 local addons = include("gwater2_addons.lua")
 gwater2.addons = addons.public
 
-hook.Run("gw2_INTERNAL_call")
-
 local params = include("menu/gwater2_params.lua")(addons)
 local paramstabs = include("menu/gwater2_paramstabs.lua")
 local styling = include("menu/gwater2_styling.lua")
@@ -119,6 +117,7 @@ local function create_menu(init)
 
 	function new_close_btn:DoClick()
 		frame:SetVisible(false)
+		addons.private.CallOnAddons("MenuClose", frame)
 		just_closed = false
 	end
 
@@ -315,6 +314,7 @@ local function create_menu(init)
 	function frame:OnKeyCodePressed(key)
 		if key ~= gwater2.options.menu_key:GetInt() then return end
 		frame:SetVisible(false)
+		addons.private.CallOnAddons("MenuClose", gwater2.options.frame)
 		just_closed = true
 	end
 
@@ -636,7 +636,8 @@ local function create_menu(init)
 	-- force docking to work properly
 	tabs:SetActiveTab(tabs.Items[gwater2.options.menu_tab:GetInt() ~= 1 and 1 or 2].Tab)
 
-	function tabs:OnActiveTabChanged(_, new)
+	function tabs:OnActiveTabChanged(old, new)
+		addons.private.CallOnAddons("TabChanged", old, new)
 		help_text:SetText(_util.get_localised(new.realname..".help"))
 		for k, v in ipairs(self.Items) do
 			if v.Tab ~= new then continue end
@@ -757,7 +758,13 @@ surface.CreateFont("GWater2Title", {
 
 concommand.Add("gwater2_menu", function()
 	if IsValid(gwater2.options.frame) then
-		gwater2.options.frame:SetVisible(not gwater2.options.frame:IsVisible())
+		local vis = not gwater2.options.frame:IsVisible()
+		gwater2.options.frame:SetVisible(vis)
+		if vis then
+			addons.private.CallOnAddons("MenuOpen", gwater2.options.frame)
+		else
+			addons.private.CallOnAddons("MenuClose", gwater2.options.frame)
+		end
 		gwater2.options.frame:Center()
 		gwater2.options.solver:Reset()
 		local tabs = gwater2.options.frame.tabs
@@ -780,6 +787,7 @@ concommand.Add("gwater2_menu", function()
 	end
 
 	gwater2.options.frame = create_menu()
+	addons.private.CallOnAddons("MenuOpen", gwater2.options.frame)
 end)
 
 hook.Add("GUIMousePressed", "gwater2_menuclose", function(mouse_code, aim_vector)
@@ -789,6 +797,7 @@ hook.Add("GUIMousePressed", "gwater2_menuclose", function(mouse_code, aim_vector
 	local frame_x, frame_y = gwater2.options.frame:GetPos()
 	if x < frame_x or x > frame_x + gwater2.options.frame:GetWide() or y < frame_y or y > frame_y + gwater2.options.frame:GetTall() then
 		gwater2.options.frame:SetVisible(false)
+		addons.private.CallOnAddons("MenuClose", gwater2.options.frame)
 	end
 end)
 
@@ -805,7 +814,10 @@ end)
 hook.Add("Think", "GWATER2_InitializeMenu", function()
 	if not admin_only then return end -- wait until we have the convar
 	hook.Remove("Think", "GWATER2_InitializeMenu")
+	hook.Run("gw2_INTERNAL_call")
+	addons.private.CallOnAddons("PreMenuCreation")
 	gwater2.options.frame = create_menu(true)
+	addons.private.CallOnAddons("PostMenuCreation")
 	gwater2.options.frame:SetVisible(false)
 end)
 
