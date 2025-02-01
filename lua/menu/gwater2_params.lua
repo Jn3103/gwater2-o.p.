@@ -9,6 +9,8 @@ local _util = include("menu/gwater2_util.lua")
 function pass(addons)
 if gwater2.__PARAMS__ then return gwater2.__PARAMS__ end
 local parameters = {
+	["Prefix"] = "PHYS",
+	["Recursive"] = true,
 	["001-Physics Parameters"] = {
 		["001-Adhesion"] = {
 			min=0,
@@ -107,6 +109,8 @@ local parameters = {
 	}
 }
 local visuals = {
+	["Prefix"] = "VISL",
+	["Recursive"] = false,
 	["001-Diffuse Threshold"] = {
 		min=1,
 		max=500,
@@ -126,6 +130,7 @@ local visuals = {
 		end,
 		func=function(col)
 			local finalpass = Material("gwater2/finalpass")
+			print(col)
 			finalpass:SetVector4D("$color2", 
 				col.r * gwater2.parameters.color_value_multiplier,
 				col.g * gwater2.parameters.color_value_multiplier,
@@ -438,6 +443,8 @@ local performance = {
 	}
 }
 local interaction = {
+	["Prefix"] = "INTC",
+	["Recursive"] = false,
 	["001-Reaction Force Parameters"] = {
 		["001-Reaction Forces"] = {
 			type="check",

@@ -64,6 +64,7 @@ local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
 if not file.Exists("gwater2", "DATA") then file.CreateDir("gwater2") end
 local presets = include("menu/gwater2_presets.lua")
+local _presets = addons.public.presets
 local admin_only = GetConVar("gwater2_adminonly")
 
 -- garry, sincerely... fuck you
@@ -323,7 +324,9 @@ local function create_menu(init)
 	local function about_tab(tabs)
 		local tab = vgui.Create("DPanel", tabs)
 		function tab:Paint() end
-		tabs:AddSheet(_util.get_localised("About Tab.title"), tab, "icon16/exclamation.png").Tab.realname = "About Tab"
+		local sheet = tabs:AddSheet(_util.get_localised("About Tab.title"), tab, "icon16/exclamation.png")
+		sheet.Tab.realname = "About Tab"
+		sheet.Tab.non_admin_usable = true
 		tab = tab:Add("DScrollPanel")
 		tab:Dock(FILL)
 
@@ -552,10 +555,14 @@ local function create_menu(init)
 		about_tab(tabs)
 		addons.private.GenerateTabs(1, tabs)
 	
+		local addeds = {}
+
 		frame.params = {}	-- need to pass by reference into presets
-		frame.params._parameters = paramstabs.parameters_tab(tabs)
-		frame.params._visuals = paramstabs.visuals_tab(tabs)
-		frame.params._interactions = paramstabs.interaction_tab(tabs)
+		frame.params._parameters = paramstabs.parameters_tab(tabs, addeds)
+		frame.params._visuals = paramstabs.visuals_tab(tabs, addeds)
+		frame.params._interactions = paramstabs.interaction_tab(tabs, addeds)
+
+		addons.public.parameter_panels = addeds
 	
 		presets.presets_tab(tabs, frame.params)
 		addons.private.GenerateTabs(2, tabs)
@@ -776,12 +783,13 @@ concommand.Add("gwater2_menu", function()
 		-- should we show tabs?
 		local tabs_enabled = !admin_only:GetBool() or LocalPlayer():IsAdmin()
 		
-		local items = tabs:GetItems()
-		items[2].Tab:SetVisible(tabs_enabled) -- parameters
-		items[3].Tab:SetVisible(tabs_enabled) -- visuals
-		items[4].Tab:SetVisible(tabs_enabled) -- interactions
-		items[5].Tab:SetVisible(tabs_enabled) -- presets
-		items[9].Tab:SetVisible(tabs_enabled and GetConVar("developer"):GetInt() ~= 0) -- developer
+		for i, tab in pairs(tabs:GetItems()) do
+			if !tab.Tab.VisibiltyRequirement then
+				tab.Tab:SetVisible(tabs_enabled or (tab.Tab.non_admin_usable or false))
+			else
+				tab.Tab:SetVisible(tab.Tab:VisibiltyRequirement(tabs_enabled))
+			end
+		end
 
 		return
 	end
@@ -789,6 +797,21 @@ concommand.Add("gwater2_menu", function()
 	gwater2.options.frame = create_menu()
 	addons.private.CallOnAddons("MenuOpen", gwater2.options.frame)
 end)
+
+-- useful tool for addon creators
+concommand.Add("gwater2_remount", function()
+	if !gwater2.options.frame then return end
+	table.Empty(addons.private.addons)
+	table.Empty(addons.private.tabs)
+	hook.Run("gw2_INTERNAL_call")
+	gwater2.__PARAMS__ = nil
+	params = include("menu/gwater2_params.lua")(addons)
+	addons.private.CallOnAddons("PreMenuCreation")
+	local gw2menu = create_menu(true)
+	gw2menu:SetVisible(false)
+	gwater2.options.frame = gw2menu
+	addons.private.CallOnAddons("PostMenuCreation", gw2menu)
+end, nil, "Remounts all addons, regenerates the parameters and regenerates the menu")
 
 hook.Add("GUIMousePressed", "gwater2_menuclose", function(mouse_code, aim_vector)
 	if not IsValid(gwater2.options.frame) then return end
@@ -815,9 +838,11 @@ hook.Add("Think", "GWATER2_InitializeMenu", function()
 	if not admin_only then return end -- wait until we have the convar
 	hook.Remove("Think", "GWATER2_InitializeMenu")
 	hook.Run("gw2_INTERNAL_call")
+	gwater2.__PARAMS__ = nil
+	params = include("menu/gwater2_params.lua")(addons)
 	addons.private.CallOnAddons("PreMenuCreation")
 	gwater2.options.frame = create_menu(true)
-	addons.private.CallOnAddons("PostMenuCreation")
+	addons.private.CallOnAddons("PostMenuCreation", gwater2.options.frame)
 	gwater2.options.frame:SetVisible(false)
 end)
 
@@ -840,3 +865,5 @@ if !game.SinglePlayer() then
 	hook.Add("PlayerButtonDown", "gwater2_menu", gwater2.open_menu)
 	hook.Add("PlayerButtonUp", "gwater2_menu", gwater2.close_menu)
 end
+
+return addons

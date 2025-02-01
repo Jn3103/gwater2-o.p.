@@ -18,6 +18,7 @@ local hooks = {
 do -- basic tables, functions and more tables
     private.addons = {}
     private.tabs = {}
+    private.alladdons = {}
     public.util = _util
     function public.util.create_category(tab, txt)
         local pan = tab:Add("Panel")
@@ -25,13 +26,13 @@ do -- basic tables, functions and more tables
         pan.help_text = tab.help_text
         function pan:Paint(w, h) styling.draw_main_background(0, 0, w, h) end
         pan.label = _util.make_title_label(pan, txt)
-        function pan:Finish(indent)
+        function pan:Finish(offset)
             local ttall = self:GetTall()+5
             for _, i in pairs(self:GetChildren()) do
                 ttall = ttall + i:GetTall()
             end
         
-            ttall = ttall - (20 - ((indent or 0) * 20))
+            ttall = ttall + ((offset or -1) * 20)
             self:SetTall(ttall)
             self:Dock(TOP)
             self:InvalidateChildren()
@@ -630,8 +631,8 @@ function public.definition(icon, name, description, prefix)
     return def
 end
 
-do -- private functions only shared with menu
-    function private.GenerateTabs(where, tabs)
+do -- private functions only shared with menu and the network that menu shares presets with
+    function private.GenerateTabs(where, tabs, params)
         for i, v in pairs(private.tabs) do
             if v.order ~= where or !v.addon:IsMounted() then continue end
             local tab = vgui.Create("DPanel", tabs)
@@ -642,7 +643,7 @@ do -- private functions only shared with menu
             tab:Dock(FILL)
             styling.define_scrollbar(tab:GetVBar())
 
-            v.func(tab, gwater2.parameters)
+            v.func(tab, params)
         end
     end
 
@@ -654,9 +655,17 @@ do -- private functions only shared with menu
     end
 end
 
+do -- public functions
+    -- none
+
+    -- lol
+end
+
 local addons = {
     public = public,
     private = private
 }
+
+addons.public.presets = include("gwater2_presets_api.lua")(addons)
 
 return addons

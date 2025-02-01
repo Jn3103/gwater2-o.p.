@@ -22,6 +22,7 @@ if SERVER then
 	AddCSLuaFile("gwater2_shaders.lua")
 	AddCSLuaFile("gwater2_menu.lua")
 	AddCSLuaFile("gwater2_addons.lua")
+	AddCSLuaFile("gwater2_presets_api.lua")
 	return
 end
 
@@ -248,11 +249,54 @@ local function should_collide(ent)
 	return ent:GetCollisionGroup() ~= COLLISION_GROUP_WORLD and bit.band(ent:GetSolidFlags(), FSOLID_NOT_SOLID) == 0
 end
 
+-- generated using regex and lua from the original source code
+local defaults = {
+	["cohesion"] = 0.01,
+	["static_friction"] = 0.5,
+	["buoyancy"] = 1,
+	["free_surface_drag"] = 0,
+	["anisotropy_scale"] = 1,
+	["adhesion"] = 0,
+	["gravity"] = -15.24,
+	["viscosity"] = 0,
+	["diffuse_drag"] = 0.8,
+	["reaction_forces"] = 0,
+	["vorticity_confinement"] = 0,
+	["sleep_threshold"] = 0.1,
+	["solid_pressure"] = 0.5,
+	["solid_rest_distance"] = 0.65,
+	["dynamic_friction"] = 0.5,
+	["anisotropy_max"] = 0.5,
+	["substeps"] = 3,
+	["diffuse_buoyancy"] = 1,
+	["surface_tension"] = 1e-06,
+	["anisotropy_min"] = 0.1,
+	["restitution"] = 0,
+	["collision_distance"] = 0.5,
+	["diffuse_threshold"] = 100,
+	["particle_friction"] = 0,
+	["dissipation"] = 0,
+	["particle_collision_margin"] = 0,
+	["timescale"] = 1,
+	["diffuse_lifetime"] = 5,
+	["damping"] = 0,
+	["radius"] = 10,
+	["fluid_rest_distance"] = 0.65,
+	["shock_propagation"] = 0,
+	["lift"] = 0,
+	["max_acceleration"] = 10000,
+	["drag"] = 0,
+	["shape_collision_margin"] = 0,
+	["smoothing"] = 1,
+	["max_speed"] = 100000,
+	["relaxation_factor"] = 0.25
+}
+
 gwater2 = {
 	solver = FlexSolver(100000),
 	renderer = FlexRenderer(),
 	cloth_pos = Vector(),
-	parameters = {},
+	parameters = table.Copy(defaults),
 	defaults = {},
 	update_colliders = function(index, id, rep)
 		if id == 0 then return end	-- skip, entity is world
@@ -406,8 +450,9 @@ gwater2["collision_distance"] = gwater2.solver:GetParameter("collision_distance"
 gwater2["cohesion"] = gwater2.solver:GetParameter("cohesion") * gwater2.solver:GetParameter("radius") * 0.1	-- cohesion scales by radius, for some reason..
 
 include("gwater2_shaders.lua")
-include("gwater2_net.lua")
-include("gwater2_menu.lua")
+local pass_addons_to_net = include("gwater2_net.lua")
+local addons = include("gwater2_menu.lua")
+pass_addons_to_net(addons)
 
 -- no need to calculate sound every frame
 local soundpatch_water

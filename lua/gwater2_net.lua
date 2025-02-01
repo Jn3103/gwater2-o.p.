@@ -1,6 +1,7 @@
 AddCSLuaFile()
 
 local admin_only = CreateConVar("gwater2_adminonly", "0", FCVAR_REPLICATED + FCVAR_ARCHIVE)
+local addons
 
 if SERVER then
 	-- TODO: too many network strings...
@@ -142,6 +143,9 @@ if SERVER then
 else	-- CLIENT
 	-- TODO: client Add* functions
 	gwater2.ChangeParameter = function(name, value, final)
+		if addons then
+			addons.private.CallOnAddons("ParameterChangedClient", name, value, final)
+		end
 		net.Start("GWATER2_CHANGEPARAMETER", not final)
 			net.WriteString(name)
 			net.WriteType(value)
@@ -175,7 +179,15 @@ else	-- CLIENT
 		end
 	end)
 	net.Receive("GWATER2_CHANGEPARAMETER", function(len)
-		_util.set_gwater_parameter(net.ReadString(), net.ReadType(), net.ReadEntity())
+		local param = net.ReadString()
+		local val = net.ReadType()
+		local from = net.ReadEntity()
+
+		if addons then
+			addons.private.CallOnAddons("ParameterChangedServer", param, val, from)
+		end
+
+		_util.set_gwater_parameter(param, val, from)
 	end)
 
 	net.Receive("GWATER2_RESETSOLVER", function(len)
@@ -307,4 +319,8 @@ else	-- CLIENT
 		local linear = net.ReadBool()
 		gwater2.solver:AddForceField(pos, radius, strength, mode, linear)
 	end)
+end
+
+return function(addonsnew)
+	addons = addonsnew
 end

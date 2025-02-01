@@ -1234,7 +1234,7 @@ No description provided.
 Manage, demount and mount your addons
 ]]
 
-split for coloring reasons
+below strings are split for coloring reasons
 
 "gwater2.addons.error.part1"=[[
 ERROR:
@@ -1252,12 +1252,4 @@ Addon "%s" %s!
 
 "gwater2.addons.errors.invalidprefix"=[[
 prefix contains "/"
-]]
-
-"gwater2.addons.logs.mounted"=[[
-Addon Mounted!
-]]
-
-"gwater2.addons.logs.dismounted"=[[
-Addon Demounted!
 ]]

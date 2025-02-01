@@ -10,6 +10,7 @@ if SERVER or not gwater2 then return end
 
 local styling = include("menu/gwater2_styling.lua")
 local _util = include("menu/gwater2_util.lua")
+local interface = gwater2.addons.presets
 
 local default_presets = {
 	["000-(Default) Water"]={
@@ -212,30 +213,32 @@ button_functions = {
         local params = self:GetParent():GetParent():GetParent().params
         local preset = self.preset
 
-        _parameters = params._parameters
-        _visuals = params._visuals
-        _interactions = params._interactions
+        interface.Load(preset)
 
-        local paramlist = {}
-        for name,_ in pairs(_parameters) do paramlist[#paramlist+1] = "PHYS/"..name end
-        for name,_ in pairs(_visuals) do paramlist[#paramlist+1] = "VISL/"..name end
-        for name,_ in pairs(_interactions) do paramlist[#paramlist+1] = "INTC/"..name end
+        -- _parameters = params._parameters
+        -- _visuals = params._visuals
+        -- _interactions = params._interactions
 
-        if preset["CUST/Master Reset"] then
-            for _,section in pairs(params) do
-                for name,control in pairs(section) do
-                    local default = gwater2.defaults[name:lower():gsub(" ", "_")]
-                    if control.slider then control.slider:SetValue(default) end
-                    if control.check then control.check:SetChecked(default) end
-                    if control.mixer then control.mixer:SetColor(Color(default:Unpack())) end
-                end
-            end
-        end
+        -- local paramlist = {}
+        -- for name,_ in pairs(_parameters) do paramlist[#paramlist+1] = "PHYS/"..name end
+        -- for name,_ in pairs(_visuals) do paramlist[#paramlist+1] = "VISL/"..name end
+        -- for name,_ in pairs(_interactions) do paramlist[#paramlist+1] = "INTC/"..name end
 
-        for key,value in pairs(preset) do
-            if key:sub(0, 4) == "CUST" then continue end
-            set_parameter(key, value)
-        end
+        -- if preset["CUST/Master Reset"] then
+        --     for _,section in pairs(params) do
+        --         for name,control in pairs(section) do
+        --             local default = gwater2.defaults[name:lower():gsub(" ", "_")]
+        --             if control.slider then control.slider:SetValue(default) end
+        --             if control.check then control.check:SetChecked(default) end
+        --             if control.mixer then control.mixer:SetColor(Color(default:Unpack())) end
+        --         end
+        --     end
+        -- end
+
+        -- for key,value in pairs(preset) do
+        --     if key:sub(0, 4) == "CUST" then continue end
+        --     set_parameter(key, value)
+        -- end
         _util.emit_sound("confirm")
     end,
     selector_right_click = function(self)
@@ -288,35 +291,7 @@ button_functions = {
         end
     end,
     save_simple = function(self)
-        local params = self:GetParent():GetParent():GetParent().params
         local local_presets = self:GetParent():GetParent():GetParent().presets
-
-        _parameters = params._parameters
-        _visuals = params._visuals
-        _interactions = params._interactions
-
-        local preset = {
-            ["CUST/Author"] = LocalPlayer():Name(),
-            ['CUST/Master Reset'] = true
-        }
-        for name,_ in pairs(_parameters) do
-            preset["PHYS/"..name] = get_parameter("PHYS/"..name)
-            if get_parameter("PHYS/"..name) == gwater2.defaults[name:lower():gsub(" ", "_")] then
-                preset["PHYS/"..name] = nil
-            end
-        end
-        for name,_ in pairs(_visuals) do
-            preset["VISL/"..name] = get_parameter("VISL/"..name)
-            if get_parameter("VISL/"..name) == gwater2.defaults[name:lower():gsub(" ", "_")] then
-                preset["VISL/"..name] = nil
-            end
-        end
-        for name,_ in pairs(_interactions) do
-            preset["INTC/"..name] = get_parameter("INTC/"..name)
-            if get_parameter("INTC/"..name) == gwater2.defaults[name:lower():gsub(" ", "_")] then
-                preset["INTC/"..name] = nil
-            end
-        end
 
         local frame = styling.create_blocking_frame()
         frame:SetSize(ScrW()/4, 20*5)
@@ -366,6 +341,7 @@ button_functions = {
         confirm.Paint = nil
         function confirm:DoClick()
             local name = textarea:GetValue()
+            local preset = interface.Simple(name, LocalPlayer():GetName())
             button_functions.create_preset(local_presets, name, preset)
             frame:Close()
             _util.emit_sound("select_ok")

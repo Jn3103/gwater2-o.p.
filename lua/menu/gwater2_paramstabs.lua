@@ -12,12 +12,25 @@ local function init_tab_params(tabs, tab, tab_name, sname, sec, added_params, re
 	end
 
 	for name, param in SortedPairs(sec) do
+		if name == "Prefix" or name == "Recursive" then continue end
 		if param.type == "scratch" then
-			added_params[name:sub(5)] = util.make_parameter_scratch(pan, tab_name .. "." .. name:sub(5), name:sub(5), param)
+			local panel = util.make_parameter_scratch(pan, tab_name .. "." .. name:sub(5), name:sub(5), param)
+			added_params[name:sub(5)] = panel
+			if addeds then
+				addeds[name:sub(5)] = panel
+			end
 		elseif param.type == "color" then
-			added_params[name:sub(5)] = util.make_parameter_color(pan, tab_name .. "."..name:sub(5), name:sub(5), param)
+			local panel = util.make_parameter_color(pan, tab_name .. "."..name:sub(5), name:sub(5), param)
+			added_params[name:sub(5)] = panel
+			if addeds then
+				addeds[name:sub(5)] = panel
+			end
 		elseif param.type == "check" then
-			added_params[name:sub(5)] = util.make_parameter_check(pan, tab_name .. "."..name:sub(5), name:sub(5), param)
+			local panel = util.make_parameter_check(pan, tab_name .. "."..name:sub(5), name:sub(5), param)
+			added_params[name:sub(5)] = panel
+			if addeds then
+				addeds[name:sub(5)] = panel
+			end
 		else
 			error("got unknown parameter type in " .. tab_name .. " menu generation")
 		end
@@ -36,10 +49,16 @@ local function init_tab_params(tabs, tab, tab_name, sname, sec, added_params, re
 	pan:DockPadding(5, 5, 5, 5)
 end
 
-local function init_tab(tabs, tab_name, image, recursive)
+local function init_tab(tabs, tab_name, image, recursive, addeds)
 	local tab = vgui.Create("DPanel", tabs)
 	function tab:Paint() end
-	tabs:AddSheet(util.get_localised(tab_name .. ".title"), tab, image).Tab.realname = tab_name
+	local sheet = tabs:AddSheet(util.get_localised(tab_name .. ".title"), tab, image)
+	sheet.Tab.realname = tab_name
+	if tab_name == "Developer" then
+		function sheet.Tab:VisibiltyRequirement(tabs_enabled)
+			return tabs_enabled and GetConVar("developer"):GetBool()
+		end
+	end
 	tab = tab:Add("DScrollPanel")
 	tab:Dock(FILL)
 
@@ -56,34 +75,34 @@ local function init_tab(tabs, tab_name, image, recursive)
 	local added_params = {}
 	if recursive then 
 		for sname, sec in SortedPairs(params[tab_name]) do
-			init_tab_params(tabs, tab, tab_name, sname, sec, added_params, true)
+			if sname == "Prefix" or sname == "Recursive" then continue end
+			init_tab_params(tabs, tab, tab_name, sname, sec, added_params, true, addeds)
 		end
 		return added_params, tab
 	end
-
-	init_tab_params(tabs, tab, tab_name, nil, params[tab_name], added_params, false)
+	init_tab_params(tabs, tab, tab_name, nil, params[tab_name], added_params, false, addeds)
 
 	return added_params, tab
 end
 
-local function parameters_tab(tabs)
-	return init_tab(tabs, "Parameters", "icon16/cog.png", true)
+local function parameters_tab(tabs, addeds)
+	return init_tab(tabs, "Parameters", "icon16/cog.png", true, addeds)
 end
 
-local function visuals_tab(tabs)
-	return init_tab(tabs, "Visuals", "icon16/picture.png")
+local function visuals_tab(tabs, addeds)
+	return init_tab(tabs, "Visuals", "icon16/picture.png", false, addeds)
 end
 
 local function performance_tab(tabs)
 	return init_tab(tabs, "Performance", "icon16/application_xp_terminal.png", true)
 end
 
-local function interaction_tab(tabs)
-	return init_tab(tabs, "Interactions", "icon16/chart_curve.png", true)
+local function interaction_tab(tabs, addeds)
+	return init_tab(tabs, "Interactions", "icon16/chart_curve.png", true, addeds)
 end
 
 local function developer_tab(tabs)
-	return init_tab(tabs, "Developer", "icon16/bug.png")
+	return init_tab(tabs, "Developer", "icon16/bug.png", false)
 end
 
 return {
