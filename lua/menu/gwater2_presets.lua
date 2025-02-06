@@ -408,18 +408,13 @@ button_functions = {
 		    if text ~= real then self:SetText(real) end
         end
 
-        local preset = {
-            ["CUST/Author"] = LocalPlayer():Name(),
-            ["CUST/Master Reset"] = true
-        }
-
         local do_overwrite = panel:Add("DCheckBoxLabel")
         do_overwrite:SetText("Master Reset (reset all unchecked parameters to default)")
         do_overwrite:Dock(TOP)
         do_overwrite:SetValue(true)
+
         function do_overwrite:OnChange(val)
             _util.emit_sound("toggle")
-            if not val then preset['CUST/Master Reset'] = nil return end
         end
         function do_overwrite.Button:Paint(w, h)
             surface.SetDrawColor(0, 0, 0, 125)
@@ -438,96 +433,142 @@ button_functions = {
             surface.DrawOutlinedRect(0, 0, w, h)
         end
 
+        local cat_container = panel:Add("DCategoryList") -- cats, going to be alot of them
+        styling.define_scrollbar(cat_container:GetVBar())
+
+        function cat_container:Paint(w, h)
+            styling.draw_main_background(0, 0, w, h)
+        end
+
         _parameters = params._parameters
         _visuals = params._visuals
         _interactions = params._interactions
 
-        local paramlist = {}
-        for name,_ in pairs(_parameters) do paramlist[#paramlist+1] = "PHYS/"..name end
-        for name,_ in pairs(_visuals) do paramlist[#paramlist+1] = "VISL/"..name end
-        for name,_ in pairs(_interactions) do paramlist[#paramlist+1] = "INTC/"..name end
+        local paramlist = interface.All()
+        local params_include = interface.Categorys()
 
         local _checks = {}
-        for k,v in pairs(paramlist) do
-            local check = panel:Add("DCheckBoxLabel")
-            _checks[#_checks + 1] = check
-            local real = ""
-            if v:sub(0, 4) == "VISL" then
-                real = _visuals[v:sub(6)].label:GetText()
-            elseif v:sub(0, 4) == "PHYS" then
-                real = _parameters[v:sub(6)].label:GetText()
-            elseif v:sub(0, 4) == "INTC" then
-                real = _interactions[v:sub(6)].label:GetText()
-            end
-            check:SetText(v:sub(0, 4).."/"..real)
-            check:Dock(TOP)
-            check.param = v
-            function check:OnChange(value)
-                _util.emit_sound("toggle")
-                if not value then preset[self.param] = nil return end
-                preset[self.param] = get_parameter(self.param)
-            end
-            function check.Button:Paint(w, h)
-                surface.SetDrawColor(0, 0, 0, 125)
-                surface.DrawRect(0, 0, w, h)
-        
-                if panel.washovered then
-                    surface.SetDrawColor(Color(187, 245, 255))
+        for cat_name, cat_params in SortedPairs(paramlist) do
+            local cat_collapsible = cat_container:Add("")
+            cat_collapsible:InvalidateLayout(true)
+            function cat_collapsible:Init() end
+            function cat_collapsible:Paint(w, rh)
+                local h = cat_collapsible:GetHeaderHeight()
+                styling.draw_main_background(0, 0, w, h)
+                draw.DrawText(cat_name, "DermaDefault", 4,  h - 16)
+                local center = h / 2
+                local padding = 4
+                local size = h / 3 - padding
+
+                local bottom = center + size
+                local top = center - size
+
+                if self:GetExpanded() then
+                    padding = 5
+                    surface.SetDrawColor(255, 255, 255)
+                    surface.DrawLine(w - bottom, h - padding - size * 2, w - top, h - padding)
+                    surface.DrawLine(w - bottom, h - padding - size * 2, w - top, h - padding - size * 4)
                 else
-                    surface.SetDrawColor(Color(255, 255, 255))
+                    surface.SetDrawColor(255, 255, 255)
+                    surface.DrawLine(w - padding - size * 2, bottom, w - padding, top)
+                    surface.DrawLine(w - padding - size * 2, bottom, w - padding - size * 4, top)
                 end
+            end
+
+            local cat_content = vgui.Create("DPanel", panel)
+            cat_collapsible:SetContents(cat_content)
+            cat_content:DockMargin(5, 0, 0, 0)
+            cat_content:DockPadding(2, 2, 2, 3)
+            function cat_content:Paint(w, h)
+                styling.draw_main_background(0, 0, w, h)
+            end
+
+            local cat_checks = {}
+
+            for param_id, _ in SortedPairs(cat_params) do
+                local checklabel = cat_content:Add("DCheckBoxLabel")
+                cat_checks[#cat_checks + 1] = checklabel -- we only need the checks
+                checklabel:SetText(param_id)
+                checklabel:DockMargin(2, 2, 2, 2)
+                checklabel:Dock(TOP)
+                checklabel:SetValue(false)
+                function checklabel:OnChange(val, nosfx)
+                    params_include[cat_name][param_id] = val
+                    if !nosfx then
+                        _util.emit_sound("toggle")
+                    end
+                end
+
+                checklabel:SetTextColor(Color(255, 255, 255))
+
+                function checklabel:Paint()
+                    if (self:IsHovered() or self:IsChildHovered()) and not self.washovered then
+                        self.washovered = true
+                        self:SetTextColor(Color(187, 245, 255))
+                    elseif not (self:IsHovered() or self:IsChildHovered()) and self.washovered then
+                        self.washovered = false
+                        self:SetTextColor(Color(255, 255, 255))
+                    end
+
+                    DCheckBoxLabel.Paint(self, w, h)
+                end
+
+                function checklabel.Button:Paint(w, h)
+                    surface.SetDrawColor(0, 0, 0, 125)
+                    surface.DrawRect(0, 0, w, h)
+
+                    if checklabel.washovered then
+                        surface.SetDrawColor(Color(187, 245, 255))
+                    else
+                        surface.SetDrawColor(Color(255, 255, 255))
+                    end
+                
+                    if self:GetChecked() then
+                        surface.DrawRect(3, 3, w-6, h-6)
+                    end
             
-                if self:GetChecked() then
-                    surface.DrawRect(3, 3, w-6, h-6)
+                    surface.DrawOutlinedRect(0, 0, w, h)
                 end
-        
-                surface.DrawOutlinedRect(0, 0, w, h)
+            end
+
+            local deselectall = vgui.Create("DButton", cat_collapsible)
+            deselectall:SetText("Include None")
+            deselectall.Paint = button_functions.paint
+            function deselectall:AnimationThink()
+                deselectall:SetPos(cat_collapsible:GetWide() / 4 * 2 - 15, 0)
+                deselectall:SetSize(cat_collapsible:GetWide() / 4, cat_collapsible:GetHeaderHeight())
+            end
+            function deselectall:DoClick()
+                _util.emit_sound("select")
+                for _, check in ipairs(cat_checks) do
+                    check:SetChecked(false)
+                    check:OnChange(true, true)
+                end
+            end
+
+            local selectall = vgui.Create("DButton", cat_collapsible)
+            selectall:SetText("Include All")
+            selectall.Paint = button_functions.paint
+            function selectall:AnimationThink()
+                selectall:SetPos(cat_collapsible:GetWide() / 4 * 3 - 15, 0)
+                selectall:SetSize(cat_collapsible:GetWide() / 4, cat_collapsible:GetHeaderHeight())
+            end
+            function selectall:DoClick()
+                _util.emit_sound("select")
+                for _, check in ipairs(cat_checks) do
+                    check:SetChecked(true)
+                    check:OnChange(true, true)
+                end
             end
         end
+
+        cat_container:InvalidateLayout(true)
+        cat_container:Dock(TOP)
+        cat_container:SetHeight(270)
 
         local qpanel = frame:Add("DPanel")
         qpanel:Dock(TOP)
         qpanel.Paint = nil
-
-        local deselect_all = qpanel:Add("DButton")
-        deselect_all:SetText("Deselect all")
-        deselect_all:Dock(LEFT)
-        deselect_all:SizeToContents()
-        deselect_all.Paint = button_functions.paint
-        function deselect_all:DoClick()
-            for _,check in pairs(_checks) do
-                check:SetValue(false)
-            end
-        end
-
-        local select_visl = qpanel:Add("DButton")
-        select_visl:SetText("Select all VISL")
-        select_visl:Dock(LEFT)
-        select_visl:SizeToContents()
-        select_visl.Paint = button_functions.paint
-        select_visl.section = "VISL"
-        function select_visl:DoClick()
-            for _,check in pairs(_checks) do
-                if check:GetText():sub(0,4) ~= self.section then continue end
-                check:SetValue(true)
-            end
-        end
-
-        local select_phys = qpanel:Add("DButton")
-        select_phys:SetText("Select all PHYS")
-        select_phys:Dock(LEFT)
-        select_phys:SizeToContents()
-        select_phys.Paint = button_functions.paint
-        select_phys.section = "PHYS"
-        select_phys.DoClick = select_visl.DoClick
-
-        local select_itrc = qpanel:Add("DButton")
-        select_itrc:SetText("Select all INTC")
-        select_itrc:Dock(LEFT)
-        select_itrc:SizeToContents()
-        select_itrc.Paint = button_functions.paint
-        select_itrc.section = "INTC"
-        select_itrc.DoClick = select_visl.DoClick
         
         local btnpanel = frame:Add("DPanel")
         btnpanel:Dock(BOTTOM)
@@ -541,13 +582,7 @@ button_functions = {
         confirm.Paint = nil
         function confirm:DoClick()
             local name = textarea:GetValue()
-            if preset["CUST/Master Reset"] then
-                for k,v in pairs(preset) do
-                    local param = k:sub(6):lower():gsub(" ", "_")
-                    if get_parameter(k) ~= gwater2.defaults[param] then continue end
-                    preset[k] = nil
-                end
-            end
+            local preset = interface.Advanced(name, LocalPlayer():GetName(), do_overwrite:GetChecked(), params_include)
             button_functions.create_preset(local_presets, name, preset)
             frame:Close()
             _util.emit_sound("select_ok")

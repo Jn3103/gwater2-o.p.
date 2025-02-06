@@ -123,14 +123,13 @@ local visuals = {
 		decimals=1,
 		type="scratch"
 	},
-	["006-Color"] = {
+	["003-Color"] = {
 		type="color",
 		setup=function(mixer)
 			mixer:SetColor(gwater2.parameters.color)
 		end,
 		func=function(col)
 			local finalpass = Material("gwater2/finalpass")
-			print(col)
 			finalpass:SetVector4D("$color2", 
 				col.r * gwater2.parameters.color_value_multiplier,
 				col.g * gwater2.parameters.color_value_multiplier,
@@ -140,7 +139,7 @@ local visuals = {
 			return true
 		end
 	},
-	["007-Color Value Multiplier"] = {
+	["004-Color Value Multiplier"] = {
 		type="scratch",
 		min=0,
 		max=3,
@@ -160,7 +159,7 @@ local visuals = {
 			return true
 		end
 	},
-	["008-Reflectance"] = {
+	["005-Reflectance"] = {
 		type="scratch",
 		min=1,
 		max=20,
@@ -444,7 +443,7 @@ local performance = {
 }
 local interaction = {
 	["Prefix"] = "INTC",
-	["Recursive"] = false,
+	["Recursive"] = true,
 	["001-Reaction Force Parameters"] = {
 		["001-Reaction Forces"] = {
 			type="check",

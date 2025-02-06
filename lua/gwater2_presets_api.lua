@@ -2,19 +2,6 @@ AddCSLuaFile()
 
 if SERVER then return end
 
-local test = {
-    ["CUST/Author"]="GHM",
-    ["VISL/Color"]={210, 30, 30, 150},
-    ["PHYS/Cohesion"]=0.45,
-    ["PHYS/Adhesion"]=0.15,
-    ["PHYS/Viscosity"]=1,
-    ["PHYS/Radius"]=2,
-    ["PHYS/Surface Tension"]=0,
-    ["PHYS/Fluid Rest Distance"]=0.55,
-    ["CUST/Master Reset"]=true,
-    ["CUST/Default Preset Version"]=1
-}
-
 local default = {
     ["CUST/Master Reset"]=true,
     ["CUST/Author"]=author
@@ -44,7 +31,7 @@ local function AdvancedMain(out, data, prefix, filter)
         local name = string.match(dname, "%d+-(.+)")
         local id = name:lower():Replace(" ", "_")
         local param = gwater2.parameters[id]
-        if filter[prefix][name] and param ~= gwater2.defaults[id] then
+        if filter[prefix][name] then
             local prefixed = prefix .. "/" .. name
             if IsColor(param) then
                 out[prefixed] = {param.r, param.g, param.b, param.a}
@@ -56,19 +43,11 @@ local function AdvancedMain(out, data, prefix, filter)
     return out
 end
 
-local function AllMain(out, data, prefix)
+local function AllMain(out, data, prefix, value)
     for dname, data in pairs(data) do
         if dname == "Prefix" or dname == "Recursive" then continue end
         local name = string.match(dname, "%d+-(.+)")
-        out[name] = true
-    end
-end
-
-local function NoneMain(out, data, prefix)
-    for dname, data in pairs(data) do
-        if dname == "Prefix" or dname == "Recursive" then continue end
-        local name = string.match(dname, "%d+-(.+)")
-        out[name] = false
+        out[name] = value
     end
 end
 
@@ -83,7 +62,7 @@ local function main(addons)
         local preset = {
             ["CUST/Addons"]=addonsp;
             ["CUST/Master Reset"]=true,
-            ["CUST/Author"]=author
+            ["CUST/Author"]=author or LocalPlayer():GetName()
         }
         for cat, data in pairs(gwater2.__PARAMS__) do
             if !data.Prefix then continue end
@@ -109,8 +88,8 @@ local function main(addons)
         end
         local preset = {
             ["CUST/Addons"]=addonsp,
-            ["CUST/Master Reset"]=reset,
-            ["CUST/Author"]=author
+            ["CUST/Master Reset"]=reset or false,
+            ["CUST/Author"]=author or LocalPlayer():GetName()
         }
         for cat, data in pairs(gwater2.__PARAMS__) do
             if !data.Prefix then continue end
@@ -141,32 +120,32 @@ local function main(addons)
             if data.Recursive then
                 for name, ddata in pairs(data) do
                     if name == "Prefix" or name == "Recursive" then continue end
-                    AllMain(prdata, ddata, prefix)
+                    AllMain(prdata, ddata, prefix, true)
                 end
             else
-                AllMain(prdata, data, prefix)
+                AllMain(prdata, data, prefix, true)
+            end
+        end
+        for i, addon in pairs(addons.private.addons) do
+            if table.IsEmpty(addon.parameters) then continue end
+            local ptable = {}
+            out[addon.prefix] = ptable
+            for id, param in pairs(addon.parameters) do
+                ptable[id] = true
             end
         end
         return out
     end
 
-    function api.None()
+    function api.Categorys()
         local out = {}
         for cat, data in pairs(gwater2.__PARAMS__) do
             if !data.Prefix then continue end
-            local prefix = data.Prefix
-            local prdata = {}
-            out[prefix] = prdata
-
-            -- idfk and idgaf
-            if data.Recursive then
-                for name, ddata in pairs(data) do
-                    if name == "Prefix" or name == "Recursive" then continue end
-                    NoneMain(prdata, ddata, prefix)
-                end
-            else
-                NoneMain(prdata, data, prefix)
-            end
+            out[data.Prefix] = {}
+        end
+        for i, addon in pairs(addons.private.addons) do
+            if table.Empty(addon.parameters) then continue end
+            out[addon.prefix] = {}
         end
         return out
     end
@@ -174,6 +153,7 @@ local function main(addons)
     function api.Load(preset)
         if preset["CUST/Master Reset"] then
             for name, _ in pairs(gwater2.parameters) do
+                gwater2.ChangeParameter(name, gwater2.defaults[name], true)
                 gwater2.addons.util.set_gwater_parameter(name, gwater2.defaults[name], true)
             end
         end
@@ -184,8 +164,10 @@ local function main(addons)
             local name = param:Split("/")[2]
             local id = name:lower():Replace(" ", "_")
             if IsColor(gwater2.defaults[id]) then
+                gwater2.ChangeParameter(id, Color(unpack(value)), true)
                 gwater2.addons.util.set_gwater_parameter(id, Color(unpack(value)), true)
             else
+                gwater2.ChangeParameter(id, value, true)
                 gwater2.addons.util.set_gwater_parameter(id, value, true)
             end
         end

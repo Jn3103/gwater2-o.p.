@@ -13,6 +13,14 @@ local function get_localised(loc, ...)
 	return localed_cache[concat]
 end
 
+local function get_parameter_name(param)
+	return param.match("/(.+)")
+end
+
+local function get_parameter_category(param)
+	return param.match("(.-)/")
+end
+
 -- DONE: this was horrible.
 --local function get_localised(loc, a,b,c,d,e)
 --	a,b,c,d,e = a or "", b or "", c or "", d or "", e or ""

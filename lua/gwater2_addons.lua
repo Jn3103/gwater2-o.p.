@@ -567,7 +567,8 @@ end
 function public.definition(icon, name, description, prefix)
     local name = _util.get_localised(name)
     -- TODO: awful, i think
-    if #string.Split(prefix, "/") ~= 1 then
+    local tprefix = string.upper(string.Replace(prefix, " ", ""))
+    if #string.Split(tprefix, "/") ~= 1 or tprefix == "PHYS" or tprefix == "INTC" or tprefix == "VISL" then
         chat.AddText(language.GetPhrase("gwater2.addons.id") .. " ", Color(255, 0, 0), language.GetPhrase("gwater2.addons.error.part1") .. " ", Color(34, 162, 221), string.format(language.GetPhrase("gwater2.addons.error.part2"), name, language.GetPhrase("gwater2.addons.errors.invalidprefix")))
         return
     end
@@ -577,7 +578,7 @@ function public.definition(icon, name, description, prefix)
         name = name,
         description = description
     }
-    def.prefix = prefix
+    def.prefix = string.upper(prefix)
     def.mounted = false
     def.parameters = {}
     def.id = nil
@@ -587,8 +588,8 @@ function public.definition(icon, name, description, prefix)
     def.hooks = {}
     local h = def.hooks
 
-    function def:AddParameter(param)
-        self.parameters[#self.parameters + 1] = param
+    function def:AddParameter(param, id)
+        self.parameters[id] = param
     end
 
     function def:Error(err)

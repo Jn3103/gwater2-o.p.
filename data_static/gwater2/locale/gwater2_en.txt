@@ -1251,5 +1251,5 @@ Addon "%s" %s!
 
 
 "gwater2.addons.errors.invalidprefix"=[[
-prefix contains "/"
+invalid prefix (Prefix cannot be PHYS, INTC or VISL and cannot contain slashes)
 ]]
